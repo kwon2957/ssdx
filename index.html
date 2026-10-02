@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<title>Renal Dose Calculator</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f7fb}
+*{box-sizing:border-box}body{margin:0}.app{max-width:760px;margin:auto;padding:calc(12px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom))}
+header{padding:8px 2px 18px}.title{font-size:24px;font-weight:800}.sub{color:#687386;font-size:13px;margin-top:4px}
+.card{background:#fff;border:1px solid #e2e7ef;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(20,35,60,.04)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:#5d687a;margin:0 0 6px}
+input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #d8deea;border-radius:11px;background:#fff;color:#172033;font-size:16px}
+button{border:0;border-radius:11px;padding:12px 14px;font-weight:750;cursor:pointer}.primary{background:#2563eb;color:#fff;width:100%;margin-top:13px}.secondary{background:#eef2f7;color:#273247}
+.result{background:#f8fafc;border:1px solid #dce3ed;border-radius:14px;padding:16px;margin-top:14px}.crcl{font-size:34px;font-weight:850}.dose{font-size:21px;font-weight:800;margin-top:7px}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9efff;color:#2453a6;font-size:12px;font-weight:700}
+.note{font-size:12px;color:#687386;line-height:1.55;margin-top:11px}.warning{font-size:12px;line-height:1.55;color:#6b4d00;background:#fff8df;border:1px solid #f0df9d;border-radius:11px;padding:11px;margin-top:12px}
+h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;color:#7a8494}
+</style>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Renal Dose">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+</head>
+<body>
+<div class="app">
+<header><div class="title">🩺 Renal Dose Calculator</div><div class="sub">Cockcroft–Gault CrCl + 항생제 renal dose 참고</div></header>
+
+<section class="card">
+<h2>1. 환자 정보</h2>
+<div class="grid">
+<div><label>나이 (세)</label><input id="age" type="number" min="18" placeholder="예: 80"></div>
+<div><label>성별</label><select id="sex"><option value="F">여성</option><option value="M">남성</option></select></div>
+<div><label>체중 (kg)</label><input id="wt" type="number" min="1" step="0.1" placeholder="예: 62.4"></div>
+<div><label>Serum Cr (mg/dL)</label><input id="scr" type="number" min="0.01" step="0.01" placeholder="예: 2.58"></div>
+</div>
+<div class="small" style="margin-top:10px">현재는 입력한 체중을 Cockcroft–Gault에 사용해. 비만/저체중 환자는 IBW/AdjBW 판단이 필요할 수 있어.</div>
+</section>
+
+<section class="card">
+<h2>2. 항생제</h2>
+<div class="grid">
+<div><label>약제</label>
+<select id="drug">
+<option value="cipro">Ciprofloxacin IV</option>
+<option value="tazo">Piperacillin/Tazobactam IV</option>
+<option value="cefepime">Cefepime IV</option>
+<option value="levo">Levofloxacin IV/PO</option>
+</select></div>
+<div id="indBox"><label>기본 regimen / 적응증</label><select id="ind"></select></div>
+</div>
+<button class="primary" id="calc">CrCl + Renal Dose 계산</button>
+<div id="error" class="small" style="margin-top:9px"></div>
+<div id="result" class="result hidden" aria-live="polite"></div>
+</section>
+
+<section class="card">
+<h2>3. 사용 시 주의</h2>
+<div class="warning">⚠️ 이 도구는 임상 참고용 계산기야. Serum Cr이 steady state가 아닌 AKI/급격한 Cr 변화, 투석 환자, 극단적 체중·근육량에서는 CrCl만으로 용량을 결정하지 마. 실제 처방은 병원 protocol, 약제 허가사항, 약사/의료진 판단을 확인해.</div>
+<div class="note">현재 renal-dose 데이터: Ciprofloxacin injection, Piperacillin/Tazobactam injection, Cefepime injection, Levofloxacin. 각 약제의 허가사항 표를 기준으로 단순화해 표시함.</div>
+</section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const options={
+ cipro:[["usual","일반 regimen"],["severe","중증 감염에서 usual regimen 참고"]],
+ tazo:[["general","일반 감염"],["pna","Nosocomial pneumonia (병원획득폐렴)"]],
+ cefepime:[["500q12","500 mg q12h 기준"],["1gq12","1 g q12h 기준"],["2gq12","2 g q12h 기준"],["2gq8","2 g q8h 기준"]],
+ levo:[["750","750 mg q24h 기준"],["500","500 mg q24h 기준"],["250","250 mg q24h 기준"]]
+};
+function renderOptions(){
+ const d=$("drug").value, sel=$("ind");
+ sel.innerHTML=options[d].map(x=>`<option value="${x[0]}">${x[1]}</option>`).join("");
+}
+$("drug").addEventListener("change",renderOptions); renderOptions();
+
+function crcl(){
+ const age=Number($("age").value), wt=Number($("wt").value), scr=Number($("scr").value), sex=$("sex").value;
+ if(!age||age<18||!wt||wt<=0||!scr||scr<=0) throw new Error("나이, 체중, Serum Cr을 올바르게 입력해줘.");
+ let x=((140-age)*wt)/(72*scr); if(sex==="F") x*=.85;
+ return Math.round(x*10)/10;
+}
+function renalDose(c,d,m){
+ if(d==="cipro"){
+   return c>30 ? "200–400 mg IV q8–12h 등 usual regimen (적응증에 따라 선택)" : c>=5 ? "200–400 mg IV q18–24h" : "CrCl <5: 허가사항/기관 protocol 확인";
+ }
+ if(d==="tazo"){
+   if(c>40) return m==="pna" ? "4.5 g IV q6h" : "3.375 g IV q6h";
+   if(c>=20) return m==="pna" ? "3.375 g IV q6h" : "2.25 g IV q6h";
+   return m==="pna" ? "2.25 g IV q6h" : "2.25 g IV q8h";
+ }
+ if(d==="cefepime"){
+   const table={
+    "500q12":["500 mg q12h","500 mg q24h","500 mg q24h","250 mg q24h"],
+    "1gq12":["1 g q12h","1 g q24h","500 mg q24h","250 mg q24h"],
+    "2gq12":["2 g q12h","2 g q24h","1 g q24h","500 mg q24h"],
+    "2gq8":["2 g q8h","2 g q12h","2 g q24h","1 g q24h"]
+   }[m];
+   if(c>60)return table[0]; if(c>=30)return table[1]; if(c>=11)return table[2]; return table[3];
+ }
+ if(d==="levo"){
+   if(c>=50) return m==="750"?"750 mg q24h":m==="500"?"500 mg q24h":"250 mg q24h";
+   if(c>=20) return m==="750"?"750 mg q48h":m==="500"?"500 mg initial dose, then 250 mg q24h":"250 mg q48h";
+   if(c>=10) return m==="750"?"750 mg initial dose, then 500 mg q48h":m==="500"?"500 mg initial dose, then 250 mg q48h":"250 mg q48h";
+   return "CrCl <10: 허가사항의 HD/CAPD 표 또는 기관 protocol 확인";
+ }
+}
+function drugName(d){return {cipro:"Ciprofloxacin IV",tazo:"Piperacillin/Tazobactam IV",cefepime:"Cefepime IV",levo:"Levofloxacin IV/PO"}[d]}
+$("calc").addEventListener("click",()=>{
+ const out=$("result"),err=$("error");err.textContent="";
+ try{
+  const c=crcl(),d=$("drug").value,m=$("ind").value;
+  out.innerHTML=`<div class="tag">Cockcroft–Gault</div><div class="crcl">${c} mL/min</div><div style="margin-top:12px;font-weight:700">${drugName(d)}</div><div class="dose">${renalDose(c,d,m)}</div><div class="note">※ 표시 용량은 renal adjustment 참고값. 적응증·중증도·병원 protocol에 따라 달라질 수 있음.</div>`;
+  out.classList.remove("hidden");
+ }catch(e){out.classList.add("hidden");err.textContent=e.message;}
+});
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script></body>
+</html>
