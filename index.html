@@ -27,7 +27,7 @@ h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;col
 </head>
 <body>
 <div class="app">
-<header><div class="title">🩺 Renal Dose Calculator</div><div class="sub">Cockcroft–Gault CrCl + 항생제 renal dose 참고</div></header>
+<header><div class="title">🩺 Renal Dose Calculator <span style="font-size:11px;color:#7a8494;font-weight:700">v3</span></div><div class="sub">Cockcroft–Gault CrCl + 항생제 renal dose 참고</div></header>
 
 <section class="card">
 <h2>1. 환자 정보</h2>
@@ -169,5 +169,56 @@ $("calc").addEventListener("click",()=>{
 });
 </script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script>
+
+<script>
+(() => {
+  const VERSION = 'v3';
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.style.cssText =
+    'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));' +
+    'z-index:9999;background:#172033;color:#fff;padding:12px 14px;border-radius:14px;' +
+    'box-shadow:0 8px 28px rgba(0,0,0,.22);font-size:13px;display:none';
+  banner.innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between">' +
+    '<span>새 버전이 있어. 업데이트할까?</span>' +
+    '<button id="updateNow" style="background:#fff;color:#172033;padding:8px 11px;border-radius:9px;border:0;font-weight:800">업데이트</button>' +
+    '</div>';
+  document.body.appendChild(banner);
+
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    // Ask the browser to check the server for a new worker.
+    reg.update().catch(() => {});
+
+    if (reg.waiting) showUpdate(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const worker = reg.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdate(worker);
+        }
+      });
+    });
+  }).catch(() => {});
+
+  function showUpdate(worker) {
+    banner.style.display = 'block';
+    document.getElementById('updateNow').onclick = () => {
+      worker.postMessage('SKIP_WAITING');
+    };
+  }
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+})();
+</script>
+
 </body>
 </html>
