@@ -16,9 +16,9 @@ input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px
 button{border:0;border-radius:11px;padding:12px 14px;font-weight:750;cursor:pointer}.primary{background:#2563eb;color:#fff;width:100%;margin-top:13px}.secondary{background:#eef2f7;color:#273247}
 .result{background:#f8fafc;border:1px solid #dce3ed;border-radius:14px;padding:16px;margin-top:14px}.crcl{font-size:34px;font-weight:850}.dose{font-size:21px;font-weight:800;margin-top:7px}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9efff;color:#2453a6;font-size:12px;font-weight:700}
 .note{font-size:12px;color:#687386;line-height:1.55;margin-top:11px}.warning{font-size:12px;line-height:1.55;color:#6b4d00;background:#fff8df;border:1px solid #f0df9d;border-radius:11px;padding:11px;margin-top:12px}
-h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;color:#7a8494}
+.info{font-size:12px;line-height:1.55;color:#39465b;background:#f1f5f9;border-radius:11px;padding:11px;margin-top:11px}
+h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;color:#7a8494}.dialysis{margin-top:12px}
 </style>
-
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Renal Dose">
@@ -37,6 +37,9 @@ h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;col
 <div><label>체중 (kg)</label><input id="wt" type="number" min="1" step="0.1" placeholder="예: 62.4"></div>
 <div><label>Serum Cr (mg/dL)</label><input id="scr" type="number" min="0.01" step="0.01" placeholder="예: 2.58"></div>
 </div>
+<div class="grid dialysis">
+<div><label>투석 여부</label><select id="dialysis"><option value="none">투석 안 함</option><option value="hd">혈액투석 (HD)</option><option value="capd">복막투석 (CAPD)</option></select></div>
+</div>
 <div class="small" style="margin-top:10px">현재는 입력한 체중을 Cockcroft–Gault에 사용해. 비만/저체중 환자는 IBW/AdjBW 판단이 필요할 수 있어.</div>
 </section>
 
@@ -49,6 +52,10 @@ h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;col
 <option value="tazo">Piperacillin/Tazobactam IV</option>
 <option value="cefepime">Cefepime IV</option>
 <option value="levo">Levofloxacin IV/PO</option>
+<option value="mero">Meropenem IV</option>
+<option value="ceftriaxone">Ceftriaxone IV/IM</option>
+<option value="vanco">Vancomycin IV</option>
+<option value="amikacin">Amikacin IV/IM</option>
 </select></div>
 <div id="indBox"><label>기본 regimen / 적응증</label><select id="ind"></select></div>
 </div>
@@ -59,22 +66,27 @@ h2{font-size:16px;margin:0 0 12px}.hidden{display:none}.small{font-size:12px;col
 
 <section class="card">
 <h2>3. 사용 시 주의</h2>
-<div class="warning">⚠️ 이 도구는 임상 참고용 계산기야. Serum Cr이 steady state가 아닌 AKI/급격한 Cr 변화, 투석 환자, 극단적 체중·근육량에서는 CrCl만으로 용량을 결정하지 마. 실제 처방은 병원 protocol, 약제 허가사항, 약사/의료진 판단을 확인해.</div>
-<div class="note">현재 renal-dose 데이터: Ciprofloxacin injection, Piperacillin/Tazobactam injection, Cefepime injection, Levofloxacin. 각 약제의 허가사항 표를 기준으로 단순화해 표시함.</div>
+<div class="warning">⚠️ 임상 참고용 계산기야. AKI/급격한 Cr 변화, 투석, 극단적 체중·근육량에서는 단순 CrCl만으로 용량을 결정하지 마. 실제 처방은 병원 protocol, 최신 허가사항, 약사/의료진 판단을 확인해.</div>
+<div class="info">Vancomycin은 단순 renal-dose 표보다 AUC-guided TDM이 중요해. 중증 MRSA 감염에서는 AUC/MIC 400–600을 목표로 개별화하며, 이 계산기는 자동 maintenance dose를 확정하지 않아.</div>
+<div class="note">참고 범위: Ciprofloxacin, Piperacillin/Tazobactam, Cefepime, Levofloxacin, Meropenem, Ceftriaxone의 허가사항 및 vancomycin TDM consensus를 반영해 단순화함. Amikacin은 혈중농도 모니터링이 필요한 약제로 초기 용량 참고만 표시함.</div>
 </section>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
 const options={
- cipro:[["usual","일반 regimen"],["severe","중증 감염에서 usual regimen 참고"]],
- tazo:[["general","일반 감염"],["pna","Nosocomial pneumonia (병원획득폐렴)"]],
+ cipro:[["usual","일반 regimen"],["uti","요로감염/기타"],["pna","Nosocomial pneumonia"]],
+ tazo:[["general","일반 감염"],["pna","Nosocomial pneumonia"]],
  cefepime:[["500q12","500 mg q12h 기준"],["1gq12","1 g q12h 기준"],["2gq12","2 g q12h 기준"],["2gq8","2 g q8h 기준"]],
- levo:[["750","750 mg q24h 기준"],["500","500 mg q24h 기준"],["250","250 mg q24h 기준"]]
+ levo:[["750","750 mg q24h 기준"],["500","500 mg q24h 기준"],["250","250 mg q24h 기준"]],
+ mero:[["500","500 mg q8h 기준"],["1g","1 g q8h 기준"]],
+ ceftriaxone:[["1g","1 g q24h 기준"],["2g","2 g q24h 기준"]],
+ vanco:[["standard","중증 감염 초기 참고"],["maintenance","유지요법/TDM"]],
+ amikacin:[["7.5","7.5 mg/kg conventional-dose 참고"],["15","15 mg/kg extended-interval 참고"]]
 };
 function renderOptions(){
- const d=$("drug").value, sel=$("ind");
- sel.innerHTML=options[d].map(x=>`<option value="${x[0]}">${x[1]}</option>`).join("");
+ const d=$("drug"), sel=$("ind");
+ sel.innerHTML=options[d.value].map(x=>`<option value="${x[0]}">${x[1]}</option>`).join("");
 }
 $("drug").addEventListener("change",renderOptions); renderOptions();
 
@@ -84,11 +96,14 @@ function crcl(){
  let x=((140-age)*wt)/(72*scr); if(sex==="F") x*=.85;
  return Math.round(x*10)/10;
 }
-function renalDose(c,d,m){
+function renalDose(c,d,m,wt,scr,sex,dialysis){
  if(d==="cipro"){
-   return c>30 ? "200–400 mg IV q8–12h 등 usual regimen (적응증에 따라 선택)" : c>=5 ? "200–400 mg IV q18–24h" : "CrCl <5: 허가사항/기관 protocol 확인";
+   if(dialysis!=="none") return "200–400 mg IV q24h, 투석 후 투여 참고";
+   return c>30 ? "적응증에 따른 usual regimen (예: 200–400 mg IV q8–12h)" : c>=5 ? "200–400 mg IV q18–24h" : "CrCl <5: 기관 protocol/허가사항 확인";
  }
  if(d==="tazo"){
+   if(dialysis==="hd") return m==="pna" ? "2.25 g IV q8h + HD 후 0.75 g" : "2.25 g IV q12h + HD 후 0.75 g";
+   if(dialysis==="capd") return m==="pna" ? "2.25 g IV q8h" : "2.25 g IV q12h";
    if(c>40) return m==="pna" ? "4.5 g IV q6h" : "3.375 g IV q6h";
    if(c>=20) return m==="pna" ? "3.375 g IV q6h" : "2.25 g IV q6h";
    return m==="pna" ? "2.25 g IV q6h" : "2.25 g IV q8h";
@@ -100,24 +115,59 @@ function renalDose(c,d,m){
     "2gq12":["2 g q12h","2 g q24h","1 g q24h","500 mg q24h"],
     "2gq8":["2 g q8h","2 g q12h","2 g q24h","1 g q24h"]
    }[m];
+   if(dialysis==="capd") return "선택 regimen에 따라 q48h; CAPD 표/기관 protocol 확인";
+   if(dialysis==="hd") return m==="2gq8" ? "1 g q24h, HD 후 투여 (febrile neutropenia는 별도)" : "HD 표에 따라 Day 1 loading 후 유지요법; HD 후 투여";
    if(c>60)return table[0]; if(c>=30)return table[1]; if(c>=11)return table[2]; return table[3];
  }
  if(d==="levo"){
+   if(dialysis!=="none") {
+     if(m==="750") return "750 mg initial → 500 mg q48h, HD/CAPD 후 투여 참고";
+     if(m==="500") return "500 mg initial → 250 mg q48h, HD/CAPD 후 투여 참고";
+     return "250 mg q48h (uncomplicated UTI 제외)";
+   }
    if(c>=50) return m==="750"?"750 mg q24h":m==="500"?"500 mg q24h":"250 mg q24h";
-   if(c>=20) return m==="750"?"750 mg q48h":m==="500"?"500 mg initial dose, then 250 mg q24h":"250 mg q48h";
-   if(c>=10) return m==="750"?"750 mg initial dose, then 500 mg q48h":m==="500"?"500 mg initial dose, then 250 mg q48h":"250 mg q48h";
-   return "CrCl <10: 허가사항의 HD/CAPD 표 또는 기관 protocol 확인";
+   if(c>=20) return m==="750"?"750 mg q48h":m==="500"?"500 mg initial → 250 mg q24h":"250 mg q24h";
+   if(c>=10) return m==="750"?"750 mg initial → 500 mg q48h":m==="500"?"500 mg initial → 250 mg q48h":"250 mg q48h";
+   return "CrCl <10: HD/CAPD 표 또는 기관 protocol 확인";
+ }
+ if(d==="mero"){
+   if(dialysis!=="none") return "투석 환자는 허가사항의 자료가 제한적이므로 기관 protocol/약사 확인";
+   const base=m==="500"?"500 mg":"1 g";
+   if(c>50)return `${base} IV q8h`;
+   if(c>=26)return `${base} IV q12h`;
+   if(c>=10)return `${m==="500"?"250 mg":"500 mg"} IV q12h`;
+   return `${m==="500"?"250 mg":"500 mg"} IV q24h`;
+ }
+ if(d==="ceftriaxone"){
+   if(dialysis!=="none") return `${m==="1g"?"1 g":"2 g"} IV/IM q24h; HD/CAPD 후 추가 투여 불필요`;
+   return `${m==="1g"?"1 g":"2 g"} IV/IM q24h — renal adjustment 보통 불필요`;
+ }
+ if(d==="vanco"){
+   if(!wt) return "체중 입력 필요";
+   const load = Math.round((m==="standard"?20:15)*wt/25)*25;
+   if(dialysis==="hd") return `초기 용량 약 ${load} mg (실제체중 기준) 참고 → 이후 HD/혈중농도에 따라 개별화`;
+   return `초기 참고: 약 ${load} mg (실제체중 기준). 유지용량은 CrCl만으로 확정하지 말고 AUC-guided TDM 권장`;
+ }
+ if(d==="amikacin"){
+   if(!wt) return "체중 입력 필요";
+   const dose=Math.round((Number(m)*wt)/25)*25;
+   return `약 ${dose} mg/회 (${m} mg/kg) 초기 참고. 신기능에 따라 간격 조절 + 혈중농도(TDM) 필수`;
  }
 }
-function drugName(d){return {cipro:"Ciprofloxacin IV",tazo:"Piperacillin/Tazobactam IV",cefepime:"Cefepime IV",levo:"Levofloxacin IV/PO"}[d]}
+function drugName(d){return {
+ cipro:"Ciprofloxacin IV",tazo:"Piperacillin/Tazobactam IV",cefepime:"Cefepime IV",
+ levo:"Levofloxacin IV/PO",mero:"Meropenem IV",ceftriaxone:"Ceftriaxone IV/IM",
+ vanco:"Vancomycin IV",amikacin:"Amikacin IV/IM"}[d]}
 $("calc").addEventListener("click",()=>{
  const out=$("result"),err=$("error");err.textContent="";
  try{
-  const c=crcl(),d=$("drug").value,m=$("ind").value;
-  out.innerHTML=`<div class="tag">Cockcroft–Gault</div><div class="crcl">${c} mL/min</div><div style="margin-top:12px;font-weight:700">${drugName(d)}</div><div class="dose">${renalDose(c,d,m)}</div><div class="note">※ 표시 용량은 renal adjustment 참고값. 적응증·중증도·병원 protocol에 따라 달라질 수 있음.</div>`;
+  const c=crcl(),d=$("drug").value,m=$("ind").value,wt=Number($("wt").value),scr=Number($("scr").value),sex=$("sex").value,dialysis=$("dialysis").value;
+  const dose=renalDose(c,d,m,wt,scr,sex,dialysis);
+  out.innerHTML=`<div class="tag">Cockcroft–Gault</div><div class="crcl">${c} mL/min</div><div style="margin-top:12px;font-weight:700">${drugName(d)}</div><div class="dose">${dose}</div><div class="note">※ 표시값은 renal adjustment 참고값이야. 적응증·중증도·투석 방식·병원 protocol에 따라 달라질 수 있어.</div>`;
   out.classList.remove("hidden");
  }catch(e){out.classList.add("hidden");err.textContent=e.message;}
 });
 </script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script></body>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script>
+</body>
 </html>
